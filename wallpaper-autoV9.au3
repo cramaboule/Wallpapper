@@ -1,6 +1,6 @@
 #Region ;**** Directives created by AutoIt3Wrapper_GUI ****
 #AutoIt3Wrapper_Icon=AutoItv11.ico
-#AutoIt3Wrapper_Res_Fileversion=9.0.0.1
+#AutoIt3Wrapper_Res_Fileversion=9.0.0.3
 #AutoIt3Wrapper_Run_Tidy=y
 #AutoIt3Wrapper_Run_Au3Stripper=y
 #Au3Stripper_Parameters=/rsln
@@ -30,8 +30,11 @@ Global Const $pathini = $path & "Avion.ini"
 Global $Gui = 0, $pic, $tier, $demitier, $GUI_Button_Next, $GUI_Button_Go, $GUI_Button_Close, $z, $bar
 Global Const $DesktopWidth = @DesktopWidth, $DesktopHeight = @DesktopHeight
 
-DirCreate($path)
+If Not (FileExists($pathini)) Then
+	DirCreate($path)
+EndIf
 
+; delete file log > 30 days
 If FileExists($pathlog) Then
 	$now = _NowCalc()
 	$aTime = FileGetTime($pathlog, 1)
@@ -142,11 +145,22 @@ $hImage1 = _GDIPlus_BitmapCreateFromHBITMAP($hBMP)
 $hGraphic = _GDIPlus_ImageGetGraphicsContext($hImage1)
 _GDIPlus_GraphicsDrawImageRect($hGraphic, $hImage2, 0, 0, $W1, $H1)
 ;
-$hBrush1 = _GDIPlus_BrushCreateSolid(0xFFFFFFFF) ; text color
+$hBrush1 = _GDIPlus_BrushCreateSolid(0xff000000) ; text color
 $hBrush = _GDIPlus_BrushCreateSolid("0x60ffffff") ; layout
 _GDIPlus_GraphicsFillRect($hGraphic, 0, 0, $W1, 20, $hBrush)
-_GDIPlus_GraphicsDrawString($hGraphic, $Links[6], 0, 0, "Arial Black")
 ;
+
+$hFormat = _GDIPlus_StringFormatCreate()
+$hFamily = _GDIPlus_FontFamilyCreate("Arial Black")
+$hFont = _GDIPlus_FontCreate($hFamily, 10)
+$tLayout = _GDIPlus_RectFCreate(0, 0)
+$aInfo = _GDIPlus_GraphicsMeasureString($hGraphic, $Links[6] & '-', $hFont, $tLayout, $hFormat)
+_GDIPlus_GraphicsDrawStringEx($hGraphic, $Links[6], $hFont, $aInfo[0], $hFormat, $hBrush1)
+;
+;_GDIPlus_GraphicsDrawString($hGraphic, $Links[6] , 0, 0, "Arial Black") ; missing one character
+;
+
+
 ;~ $CLSID = _GDIPlus_EncodersGetCLSID("bmp")
 ;~ _GDIPlus_ImageSaveToFileEx($hImage1, $pathbmp, $CLSID)
 ;
