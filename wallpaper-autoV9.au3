@@ -4,6 +4,7 @@
 #AutoIt3Wrapper_Run_Tidy=y
 #AutoIt3Wrapper_Run_Au3Stripper=y
 #Au3Stripper_Parameters=/rsln
+#pragma compile(inputboxres, true)
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 #include <GDIPlus.au3>
 #include <GUIConstantsEx.au3>
@@ -15,10 +16,11 @@
 #include <File.au3>
 #include <Array.au3>
 #include <Date.au3>
+#include <Misc.au3>
 
 Global $debug = 0
 
-Global Const $head = "Wallpapaper V9"
+Global Const $head = "Wallpapaper V9.0.0.3"
 ; C:\Users\ma\AppData\Local\Wallpapper
 Global Const $path = @LocalAppDataDir & "\Wallpapper\"
 Global Const $pathjpg = $path & "Avion.jpg"
@@ -90,9 +92,10 @@ _CreateGUI()
 ; [6]=Txt (Airline & Aircraft)
 ; [7]=
 ; [8]=
-
+$NumLink = ''
 While 1
 	$msg = GUIGetMsg()
+	$aCursor = GUIGetCursorInfo($Gui)
 	Select
 		Case $msg = $GUI_EVENT_CLOSE Or $msg = $GUI_Button_Close
 			_TrayBoxAnimate($Gui, 8)
@@ -110,7 +113,15 @@ While 1
 			_FileWriteLog($hLogFile, "---_CreateGUI inside while ---")
 			_CreateGUI()
 			_TrayBoxAnimate($Gui, 7)
-		Case $msg = $GUI_Button_Go
+		Case ($aCursor[4] = $GUI_Button_Go) And ($aCursor[3] = 1) ; Secondary down
+			$NumLink = InputBox("Numéro ou lien airliners.net", "Veuillez entrer le Numéro de la photo ou le lien https://www.airliners.net/photo/...", '', '', 345, 155, @DesktopWidth - 345, @DesktopHeight - 255)
+			If @error = 1 Then
+				$aCursor[4] = 0
+				$msg = 0
+			Else
+				If $NumLink <> '' Then ExitLoop
+			EndIf
+		Case ($aCursor[4] = $GUI_Button_Go) And ($aCursor[2] = 1) ; Primary down
 			_FileWriteLog($hLogFile, "---Set by user ---")
 			ExitLoop
 	EndSelect
@@ -119,8 +130,15 @@ WEnd
 _TrayBoxAnimate($Gui, 8)
 GUIDelete($Gui)
 
+If $NumLink <> '' Then
+
+	$Links = _GetLinks($NumLink)
+
+EndIf
+
 _FileWriteLog($hLogFile, "---download pic ---")
 InetGet($Links[4], $pathjpg)
+
 
 ;resize the picture
 _FileWriteLog($hLogFile, "---_GDIPlus_Startup ---")
@@ -182,16 +200,13 @@ _GDIPlus_Shutdown()
 _ChangeDesktopWallpaper($pathjpg1, 0)
 
 IniWrite($pathini, "Date", "Date", _NowCalcDate())
-;~ Sleep(5000) ; let some time to read the tray tip !!! :-)
 
-;~ TrayTip ( "","", Default)
-;~ TrayTip ( "Etape4", "Quit", 5)
-;~ Sleep(500)
 _FileWriteLog($hLogFile, "---END---")
 FileClose($hLogFile)
 Exit
 ;~ ===================================================================================================FUNC===========================================
 Func _CreateGUI()
+	Global $Gui
 	If $Gui <> 0 Then GUIDelete($Gui)
 	If $Links[2] < 150 Then
 		$width = 150 ;need space for the buttons
@@ -216,7 +231,7 @@ Func _CreateGUI()
 		$Gui = GUICreate($head, $width - 2, $Links[3] + 40, $DesktopWidth - $width, $DesktopHeight - ($Links[3] + $bar[3] + 48), BitOR($WS_POPUP, $WS_BORDER))
 	ElseIf @OSVersion = "WIN_8" Or @OSVersion = "WIN_81" Then
 		$Gui = GUICreate($head, $width - 2, $Links[3] + 40, $DesktopWidth - $width, $DesktopHeight - ($Links[3] + $bar[3] + 41), BitOR($WS_POPUP, $WS_BORDER))
-	Else
+	Else ; => Win 10
 		$Gui = GUICreate($head, $width - 2, $Links[3] + 40, $DesktopWidth - $width, $DesktopHeight - ($Links[3] + 40 + $bar[3]), BitOR($WS_POPUP, $WS_BORDER))
 	EndIf
 	$pic = GUICtrlCreatePic($pathsmall, (($width - $Links[2]) / 2) - $p, -1, $Links[2], $Links[3], $WS_BORDER)
@@ -278,28 +293,55 @@ Func _TrayBoxAnimate($TBGui, $Xstyle = 1, $Xspeed = 1500)
 	DllCall("user32.dll", "int", "AnimateWindow", "hwnd", $TBGui, "int", $Xspeed, "long", "0x000" & $Xpick[$Xstyle])
 EndFunc   ;==>_TrayBoxAnimate
 
-Func _GetLinks()
-	Do ;3878175
-		Local $rdm = Random(1, 7000000, 1)
-		$small = "-6.jpg"
-		$big = "-12.jpg"
+Func _GetLinks($NumberOrLink = '')
+	$small = "-v20-6.jpg"
+	$big = ".jpg"
+	$count = 0
+	Do
+		$count += 1
+
+		Select
+			Case StringInStr($NumberOrLink, 'https://')
+				$airlinerslink = $NumberOrLink
+				_FileWriteLog($hLogFile, "---$airlinerslink=" & $airlinerslink & "---")
+			Case $NumberOrLink <> ''
+				$airlinerslink = "https://www.airliners.net/photo/" & $NumberOrLink
+				_FileWriteLog($hLogFile, "---$NumberOrLink=" & $NumberOrLink & "---")
+			Case ($count > 1) And ($NumberOrLink <> '') ; if link or number not working then use random
+				Local $rdm = Random(1, 8000000, 1)
+				$airlinerslink = "https://www.airliners.net/photo/" & $rdm
+				If $debug Then ConsoleWrite($rdm & @CRLF)
+				_FileWriteLog($hLogFile, "---$rdm=" & $rdm & "---")
+			Case Else
+				Local $rdm = Random(1, 8000000, 1)
+				$airlinerslink = "https://www.airliners.net/photo/" & $rdm
+				If $debug Then ConsoleWrite($rdm & @CRLF)
+				_FileWriteLog($hLogFile, "---$rdm=" & $rdm & "---")
+		EndSelect
+
+;~ 		ConsoleWrite($airlinerslink & @CRLF)
+
 ;~ 		Local $rdm = 2062716 ;makes problem
 ;~ 		Local $rdm = 1717766
 ;~ 		Local $rdm = 975633 ; is making problems
-;~ http://www.airliners.net/photo/219906
-;~ http://www.airliners.net/photo/Airbus/Airbus-A340-642/219906
-;~ http://cdn-www.airliners.net/photos/airliners/6/0/9/0219906.jpg?v=v20
-;~ http://imgproc.airliners.net/photos/airliners/6/0/9/0219906-v20-15.jpg (moyenne)
-;~ http://imgproc.airliners.net/photos/airliners/6/0/9/0219906-v20-6.jpg (petite)
-;~ http://imgproc.airliners.net/photos/airliners/6/0/9/0219906-v20-12.jpg (grande)
-		If $debug Then ConsoleWrite($rdm & @CRLF)
-		_FileWriteLog($hLogFile, "---$rdm=" & $rdm & "---")
+;~ https://www.airliners.net/photo/219906
+;~ https://www.airliners.net/photo/Airbus/Airbus-A340-642/219906
+;~ https://cdn-www.airliners.net/photos/airliners/6/0/9/0219906.jpg?v=v20
+;~ https://imgproc.airliners.net/photos/airliners/6/0/9/0219906-v20-15.jpg (moyenne)
+
+;~ https://imgproc.airliners.net/photos/airliners/6/0/9/0219906-v20-6.jpg (petite)
+;~ https://imgproc.airliners.net/photos/airliners/6/0/9/0219906-v20-12.jpg (grande)
+;~ New::: ---
+;~ https://imgproc.airliners.net/photos/airliners/6/0/9/0219906.jpg (Grande) /6/0/9 ....906.jpg
+
+
+
 		Local $flag = 0
-		Local $Text = _INetGetSource("http://www.airliners.net/photo/" & $rdm, 1)
+		Local $Text = _INetGetSource($airlinerslink, 1)
 		If @error Then
 			$flag = 1
 		EndIf
-		If $debug Then ConsoleWrite($Text & @CRLF)
+;~ 		If $debug Then ConsoleWrite($Text & @CRLF)
 		If Not ($flag) Then
 			$aText = _StringBetween($Text, '<html', '</html>')
 			If @error Then
@@ -307,28 +349,22 @@ Func _GetLinks()
 			EndIf
 		EndIf
 		If Not ($flag) Then
-			$aaaText = _StringBetween($aText[0], '<div class="pdp-image-wrapper">', '</a>')
-			If @error Then
-				$flag = 1
-			EndIf
-		EndIf
-		If Not ($flag) Then
-			Local $Href = _StringBetween($aaaText[0], '<img src="', '"')
+			Local $Href = _StringBetween($aText[0], 'twitter:image" content="', '?')
 			If @error Then
 				$flag = 1
 			EndIf
 		EndIf
 	Until $flag = 0
-	;ConsoleWrite($Href[0] & @CRLF)
+	If $debug Then ConsoleWrite($Href[0] & @CRLF)
 	;http://cdn-www.airliners.net/photos/airliners/8/3/3/2448338.jpg?v=v20
 	;http://imgproc.airliners.net/photos/airliners/8/3/3/2448338-v20-15.jpg
 	;http://imgproc.airliners.net/photos/airliners/8/3/3/2448338-v20-6.jpg
-	$Href[0] = StringReplace($Href[0], "cdn-www.airliners.net", "imgproc.airliners.net")
-	$tt = StringInStr($Href[0], ".jpg?v=")
-	$sID = StringMid($Href[0], $tt + 7, StringLen($Href[0]))
+;~ 	$Href[0] = StringReplace($Href[0], "cdn-www.airliners.net", "imgproc.airliners.net")
+;~ 	$tt = StringInStr($Href[0], ".jpg?v=")
+;~ 	$sID = StringMid($Href[0], $tt + 7, StringLen($Href[0]))
 	;ConsoleWrite($sID & @CRLF)
-	$Href[0] = StringReplace($Href[0], ".jpg?v=" & $sID, "-" & $sID & $small)
-	;ConsoleWrite($Href[0] & @CRLF)
+	$Href[0] = StringReplace($Href[0], ".jpg", $small)
+	If $debug Then ConsoleWrite($Href[0] & @CRLF)
 	ReDim $Href[UBound($Href) + 7]
 	For $i = UBound($Href) - 2 To 0 Step -1 ; décale toute la 'array' de +1
 		$Href[$i + 1] = $Href[$i]
@@ -351,7 +387,7 @@ Func _GetLinks()
 	Return $Href
 EndFunc   ;==>_GetLinks
 ; [0]=ubound
-; [1]=Source smaill
+; [1]=Source small
 ; [2]=$SmallWidth
 ; [3]=$Smallheight
 ; [4]=Source Big
