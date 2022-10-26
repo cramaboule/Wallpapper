@@ -1,11 +1,26 @@
 #Region ;**** Directives created by AutoIt3Wrapper_GUI ****
 #AutoIt3Wrapper_Icon=AutoItv11.ico
-#AutoIt3Wrapper_Res_Fileversion=9.0.0.3
+#AutoIt3Wrapper_UseX64=y
+#AutoIt3Wrapper_Res_Fileversion=9.0.0.6
 #AutoIt3Wrapper_Run_Tidy=y
 #AutoIt3Wrapper_Run_Au3Stripper=y
-#Au3Stripper_Parameters=/rsln
-#pragma compile(inputboxres, true)
+#Au3Stripper_Parameters=/mo
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
+#pragma compile(inputboxres, true)
+
+#cs ----------------------------------------------------------------------------
+
+	AutoIt Version: 3.3.16.0
+	Author:         Cramaboule
+
+	Script Function:
+
+	V9.0.0.6: Change the focus window to @SW_SHOWNA
+	V9.0.0.5: Set Http User Agent and complie in x64 26.06.2022
+	V9.0.0.4: Add slpeep after saving jpg1 because other image came up 11.05.2022
+
+#ce ----------------------------------------------------------------------------
+
 #include <GDIPlus.au3>
 #include <GUIConstantsEx.au3>
 #include <WindowsConstants.au3>
@@ -20,8 +35,7 @@
 
 Global $debug = 0
 
-Global Const $head = "Wallpapaper V9.0.0.3"
-; C:\Users\ma\AppData\Local\Wallpapper
+Global Const $head = "Wallpapaper V9.0.0.6"
 Global Const $path = @LocalAppDataDir & "\Wallpapper\"
 Global Const $pathjpg = $path & "Avion.jpg"
 Global Const $pathjpg1 = $path & "Avion1.jpg"
@@ -136,7 +150,7 @@ If $NumLink <> '' Then
 
 EndIf
 
-_FileWriteLog($hLogFile, "---download pic ---")
+_FileWriteLog($hLogFile, "---download pic :" & $Links[4] & " to:" & $pathjpg & "---")
 InetGet($Links[4], $pathjpg)
 
 
@@ -197,6 +211,7 @@ _GDIPlus_ImageDispose($hImage1)
 _GDIPlus_ImageDispose($hImage2)
 _GDIPlus_GraphicsDispose($hGraphic)
 _GDIPlus_Shutdown()
+Sleep(100)
 _ChangeDesktopWallpaper($pathjpg1, 0)
 
 IniWrite($pathini, "Date", "Date", _NowCalcDate())
@@ -242,7 +257,7 @@ Func _CreateGUI()
 	$GUI_Button_Close = GUICtrlCreateButton("Close", $demitier + $tier + $tier - 25, $Links[3] + 5, 50, 30, $BS_FLAT)
 	TrayTip("", "", Default)
 	_TrayBoxAnimate($Gui, 7)
-	GUISetState()
+	GUISetState(@SW_SHOWNA)
 EndFunc   ;==>_CreateGUI
 
 Func _ChangeDesktopWallpaper($bmp, $style = 0)
@@ -318,7 +333,7 @@ Func _GetLinks($NumberOrLink = '')
 				If $debug Then ConsoleWrite($rdm & @CRLF)
 				_FileWriteLog($hLogFile, "---$rdm=" & $rdm & "---")
 		EndSelect
-
+		_FileWriteLog($hLogFile, "---$airlinerslink= " & $airlinerslink & " ---")
 ;~ 		ConsoleWrite($airlinerslink & @CRLF)
 
 ;~ 		Local $rdm = 2062716 ;makes problem
@@ -337,6 +352,7 @@ Func _GetLinks($NumberOrLink = '')
 
 
 		Local $flag = 0
+		HttpSetUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36")
 		Local $Text = _INetGetSource($airlinerslink, 1)
 		If @error Then
 			$flag = 1
