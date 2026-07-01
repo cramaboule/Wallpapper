@@ -1,20 +1,30 @@
 #Region ;**** Directives created by AutoIt3Wrapper_GUI ****
 #AutoIt3Wrapper_Icon=AutoItv11.ico
-#AutoIt3Wrapper_UseX64=y
-#AutoIt3Wrapper_Res_Fileversion=9.0.0.6
+#AutoIt3Wrapper_Res_Fileversion=9.0.0.8
+#AutoIt3Wrapper_Res_ProductVersion=9.0.0.8
+#AutoIt3Wrapper_Run_Before=WriteTimestampAndVersion.exe "%in%"
+#AutoIt3Wrapper_Run_After=copy "%in%" "..\Github\Wallpapper"
 #AutoIt3Wrapper_Run_Tidy=y
 #AutoIt3Wrapper_Run_Au3Stripper=y
 #Au3Stripper_Parameters=/mo
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
+#Region    ;Timestamp =====================
+#    Last compile at : 2026/05/06 18:08:06
+#EndRegion ;Timestamp =====================
+
 #pragma compile(inputboxres, true)
+
 
 #cs ----------------------------------------------------------------------------
 
 	AutoIt Version: 3.3.16.0
 	Author:         Cramaboule
 
-	Script Function:
+	BUG: log rotate not working
 
+	Script Function:
+	V9.0.0.8: Need debug because it cannot dwl the htlm file _getLinks() -> no more than 20 loops
+	V9.0.0.7: can enter the '#' or not in the InputBox and changed to 9000000 the random
 	V9.0.0.6: Change the focus window to @SW_SHOWNA
 	V9.0.0.5: Set Http User Agent and complie in x64 26.06.2022
 	V9.0.0.4: Add slpeep after saving jpg1 because other image came up 11.05.2022
@@ -33,9 +43,15 @@
 #include <Date.au3>
 #include <Misc.au3>
 
-Global $debug = 0
+;~ ======================================== MUST BE AT 0 WHEN COMPILING FOR PROD =============================
+Global $debug = 1
+If @Compiled Then
+	$debug = 0
+EndIf
+;~ ======================================== MUST BE AT 0 WHEN COMPILING FOR PROD =============================
 
-Global Const $head = "Wallpapaper V9.0.0.6"
+Global Const $head = "Wallpapaper V9.0.0.8"
+; C:\Users\ma\AppData\Local\Wallpapper
 Global Const $path = @LocalAppDataDir & "\Wallpapper\"
 Global Const $pathjpg = $path & "Avion.jpg"
 Global Const $pathjpg1 = $path & "Avion1.jpg"
@@ -45,6 +61,7 @@ Global Const $pathsmall = $path & "small.jpg"
 Global Const $pathini = $path & "Avion.ini"
 Global $Gui = 0, $pic, $tier, $demitier, $GUI_Button_Next, $GUI_Button_Go, $GUI_Button_Close, $z, $bar
 Global Const $DesktopWidth = @DesktopWidth, $DesktopHeight = @DesktopHeight
+Global Const $iMaxCount = 20
 
 If Not (FileExists($pathini)) Then
 	DirCreate($path)
@@ -69,7 +86,6 @@ _FileWriteLog($hLogFile, "---Start prg---")
 Opt('WINTITLEMATCHMODE', 4)
 Do
 	$bar = WinGetPos("[CLASS:Shell_TrayWnd]")
-
 Until IsArray($bar)
 
 If Not FileExists($pathini) Then
@@ -90,13 +106,6 @@ EndIf
 
 
 $Links = _GetLinks()
-_FileWriteLog($hLogFile, "---Links okay---")
-_FileWriteLog($hLogFile, "---UBound=" & UBound($Links))
-For $i = 0 To (UBound($Links) - 1)
-	_FileWriteLog($hLogFile, "---$i=" & $i & " - " & StringReplace(StringStripWS($Links[$i], 7), Chr(10), "") & " ---")
-Next
-_FileWriteLog($hLogFile, "---_CreateGUI---")
-_CreateGUI()
 ; [0]=ubound
 ; [1]=Source small
 ; [2]=$SmallWidth
@@ -106,6 +115,14 @@ _CreateGUI()
 ; [6]=Txt (Airline & Aircraft)
 ; [7]=
 ; [8]=
+_FileWriteLog($hLogFile, "---Links okay---")
+_FileWriteLog($hLogFile, "---UBound=" & UBound($Links))
+For $i = 0 To (UBound($Links) - 1)
+	_FileWriteLog($hLogFile, "---$i=" & $i & " - " & StringReplace(StringStripWS($Links[$i], 7), Chr(10), "") & " ---")
+Next
+_FileWriteLog($hLogFile, "---_CreateGUI---")
+_CreateGUI()
+
 $NumLink = ''
 While 1
 	$msg = GUIGetMsg()
@@ -133,6 +150,9 @@ While 1
 				$aCursor[4] = 0
 				$msg = 0
 			Else
+				If StringLeft($NumLink, 1) = '#' Then
+					$NumLink = StringTrimLeft($NumLink, 1)
+				EndIf
 				If $NumLink <> '' Then ExitLoop
 			EndIf
 		Case ($aCursor[4] = $GUI_Button_Go) And ($aCursor[2] = 1) ; Primary down
@@ -312,6 +332,7 @@ Func _GetLinks($NumberOrLink = '')
 	$small = "-v20-6.jpg"
 	$big = ".jpg"
 	$count = 0
+	$iMaxRandom = 9000000
 	Do
 		$count += 1
 
@@ -323,16 +344,18 @@ Func _GetLinks($NumberOrLink = '')
 				$airlinerslink = "https://www.airliners.net/photo/" & $NumberOrLink
 				_FileWriteLog($hLogFile, "---$NumberOrLink=" & $NumberOrLink & "---")
 			Case ($count > 1) And ($NumberOrLink <> '') ; if link or number not working then use random
-				Local $rdm = Random(1, 8000000, 1)
+				Local $rdm = Random(1, $iMaxRandom, 1)
 				$airlinerslink = "https://www.airliners.net/photo/" & $rdm
 				If $debug Then ConsoleWrite($rdm & @CRLF)
 				_FileWriteLog($hLogFile, "---$rdm=" & $rdm & "---")
 			Case Else
-				Local $rdm = Random(1, 8000000, 1)
+				Local $rdm = Random(1, $iMaxRandom, 1)
 				$airlinerslink = "https://www.airliners.net/photo/" & $rdm
 				If $debug Then ConsoleWrite($rdm & @CRLF)
 				_FileWriteLog($hLogFile, "---$rdm=" & $rdm & "---")
 		EndSelect
+		$airlinerslink = $airlinerslink & '/L/'
+		If $debug Then ConsoleWrite($airlinerslink & @CRLF)
 		_FileWriteLog($hLogFile, "---$airlinerslink= " & $airlinerslink & " ---")
 ;~ 		ConsoleWrite($airlinerslink & @CRLF)
 
@@ -352,25 +375,34 @@ Func _GetLinks($NumberOrLink = '')
 
 
 		Local $flag = 0
-		HttpSetUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36")
+		HttpSetUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36")
+
 		Local $Text = _INetGetSource($airlinerslink, 1)
 		If @error Then
 			$flag = 1
+			If $debug Then ConsoleWrite('1-' & $flag & @CRLF)
 		EndIf
-;~ 		If $debug Then ConsoleWrite($Text & @CRLF)
+		If $debug Then ConsoleWrite($Text & @CRLF)
 		If Not ($flag) Then
 			$aText = _StringBetween($Text, '<html', '</html>')
 			If @error Then
 				$flag = 1
+				If $debug Then ConsoleWrite('2-' & $flag & @CRLF)
 			EndIf
 		EndIf
 		If Not ($flag) Then
 			Local $Href = _StringBetween($aText[0], 'twitter:image" content="', '?')
 			If @error Then
 				$flag = 1
+				If $debug Then ConsoleWrite('3-' & $flag & @CRLF)
 			EndIf
 		EndIf
-	Until $flag = 0
+	Until $flag = 0 Or $count >= $iMaxCount
+	If $count >= $iMaxCount Then
+		_FileWriteLog($hLogFile, "too many loops... " & $iMaxCount & " -> Exit")
+		If $debug Then ConsoleWrite("too many loops... " & $iMaxCount & " -> Exit" & @CRLF)
+		Exit
+	EndIf
 	If $debug Then ConsoleWrite($Href[0] & @CRLF)
 	;http://cdn-www.airliners.net/photos/airliners/8/3/3/2448338.jpg?v=v20
 	;http://imgproc.airliners.net/photos/airliners/8/3/3/2448338-v20-15.jpg
